@@ -1,0 +1,30 @@
+bundle:
+  name: sample_dab
+
+include:
+  - resources/*.yml
+
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      host: https://adb-984752964297111.11.azuredatabricks.net
+      profile: DEFAULT
+  
+    permissions:
+      - user_name: sumit.saraswat@databricks.com
+        level: CAN_MANAGE
+  
+  
+  westus_prod:
+    mode: production
+    workspace:
+      host: https://westus.azuredatabricks.net
+      profile: westus
+      root_path: /Workspace/Users/sumit.saraswat@databricks.com/.bundle/${bundle.name}/${bundle.target}
+    permissions:
+      - user_name: sumit.saraswat@databricks.com
+        level: CAN_MANAGE
+    run_as:
+      user_name: sumit.saraswat@databricks.com

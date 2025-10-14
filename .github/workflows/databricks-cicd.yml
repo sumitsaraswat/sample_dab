@@ -1,0 +1,145 @@
+name: Databricks DAB CI/CD
+
+on:
+  # Trigger on pull request to main
+  pull_request:
+    branches:
+      - main
+  
+  # Trigger on push to main (after merge)
+  push:
+    branches:
+      - main
+  
+  # Manual trigger with environment selection
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - westus_prod
+
+jobs:
+  # ============================================
+  # CI: VALIDATE BUNDLE
+  # ============================================
+  validate:
+    name: Validate Bundle
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      
+      - name: Install Databricks CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+          databricks --version
+      
+      - name: Validate Bundle Configuration
+        run: databricks bundle validate --target dev
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+      
+      - name: Check Project Structure
+        run: |
+          echo "Checking project structure..."
+          test -f databricks.yml || (echo "❌ databricks.yml not found" && exit 1)
+          test -d resources || (echo "❌ resources directory not found" && exit 1)
+          test -d src || (echo "❌ src directory not found" && exit 1)
+          echo "✅ Project structure validated"
+      
+      - name: Validation Summary
+        run: |
+          echo "✅ Validation passed successfully!"
+          echo "Bundle is ready for deployment"
+
+  # ============================================
+  # CD: DEPLOY TO DEV (Automatic on merge)
+  # ============================================
+  deploy-dev:
+    name: Deploy to Dev
+    runs-on: ubuntu-latest
+    needs: validate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: dev
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install Databricks CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+      
+      - name: Deploy to Dev
+        run: databricks bundle deploy --target dev
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+      
+      - name: Get Deployment Summary
+        run: databricks bundle summary --target dev
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+      
+      - name: Deployment Success
+        run: |
+          echo "✅ Successfully deployed to Dev!"
+          echo "Workspace: https://adb-984752964297111.11.azuredatabricks.net/"
+          echo "Path: /Workspace/Users/sumit.saraswat@databricks.com/.bundle/sample_dab/dev"
+
+  # ============================================
+  # CD: DEPLOY TO WEST US PROD (Manual with approval)
+  # ============================================
+  deploy-westus-prod:
+    name: Deploy to West US Production
+    runs-on: ubuntu-latest
+    needs: validate
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'westus_prod'
+    environment: westus-production
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install Databricks CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+      
+      - name: Deploy to West US Production
+        run: databricks bundle deploy --target westus_prod
+        env:
+          DATABRICKS_HOST: ${{ secrets.WESTUS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.WESTUS_TOKEN }}
+      
+      - name: Verify West US Deployment
+        run: databricks bundle summary --target westus_prod
+        env:
+          DATABRICKS_HOST: ${{ secrets.WESTUS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.WESTUS_TOKEN }}
+      
+      - name: Create Release Tag
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          TAG="westus-release-$(date +%Y%m%d-%H%M%S)"
+          git tag -a $TAG -m "West US Production release $TAG"
+          git push origin $TAG || echo "Tag push may need write permissions"
+      
+      - name: Deployment Success
+        run: |
+          echo "✅ Successfully deployed to West US Production!"
+          echo "Workspace: https://westus.azuredatabricks.net/"
+          echo "Path: /Workspace/Users/sumit.saraswat@databricks.com/.bundle/sample_dab/westus_prod"
