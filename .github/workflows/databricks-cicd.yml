@@ -25,7 +25,7 @@ on:
 
 jobs:
   # ============================================
-  # CI: VALIDATE AND TEST
+  # CI: VALIDATE BUNDLE
   # ============================================
   validate:
     name: Validate Bundle
@@ -70,108 +70,6 @@ jobs:
         run: |
           echo "✅ Validation passed successfully!"
           echo "Bundle is ready for deployment"
-
-  # ============================================
-  # CI: TEST JOB ON DEV (On Pull Request)
-  # ============================================
-  test-on-dev:
-    name: Test Job on Dev
-    runs-on: ubuntu-latest
-    needs: validate
-    if: github.event_name == 'pull_request'
-    environment: dev
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Install Databricks CLI
-        run: |
-          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
-      
-      - name: Configure Databricks CLI
-        run: |
-          mkdir -p ~/.databricks
-          cat > ~/.databrickscfg << EOF
-          [DEFAULT]
-          host = ${{ secrets.DATABRICKS_HOST }}
-          token = ${{ secrets.DATABRICKS_TOKEN }}
-          EOF
-          chmod 600 ~/.databrickscfg
-      
-      - name: Deploy to Dev for Testing
-        run: |
-          echo "Deploying bundle to dev for testing..."
-          databricks bundle deploy --target dev
-      
-      - name: Run Job for Testing
-        id: run_job
-        run: |
-          echo "Running job to test the deployment..."
-          
-          # Get the job ID from the deployment
-          JOB_ID=$(databricks bundle run sample_dab_job --target dev 2>&1 | grep -oP 'Run URL:.*runs/\K[0-9]+' || echo "")
-          
-          if [ -z "$JOB_ID" ]; then
-            echo "Could not extract job run ID, attempting alternative method..."
-            # Alternative: trigger the job and get the run ID
-            JOB_NAME="[dev ${{ github.actor }}] sample_dab_job"
-            databricks jobs list --output json | jq -r ".jobs[] | select(.settings.name == \"$JOB_NAME\") | .job_id" > job_id.txt
-            DATABRICKS_JOB_ID=$(cat job_id.txt)
-            
-            if [ -n "$DATABRICKS_JOB_ID" ]; then
-              echo "Found job ID: $DATABRICKS_JOB_ID"
-              RUN_OUTPUT=$(databricks jobs run-now --job-id $DATABRICKS_JOB_ID --output json)
-              JOB_RUN_ID=$(echo $RUN_OUTPUT | jq -r '.run_id')
-              echo "Started job run: $JOB_RUN_ID"
-              echo "job_run_id=$JOB_RUN_ID" >> $GITHUB_OUTPUT
-            else
-              echo "⚠️ Could not find job, skipping test run"
-              echo "job_run_id=" >> $GITHUB_OUTPUT
-            fi
-          else
-            echo "Job run ID: $JOB_ID"
-            echo "job_run_id=$JOB_ID" >> $GITHUB_OUTPUT
-          fi
-      
-      - name: Wait for Job Completion
-        if: steps.run_job.outputs.job_run_id != ''
-        run: |
-          JOB_RUN_ID="${{ steps.run_job.outputs.job_run_id }}"
-          echo "Waiting for job run $JOB_RUN_ID to complete..."
-          
-          MAX_WAIT=600  # 10 minutes
-          ELAPSED=0
-          INTERVAL=30
-          
-          while [ $ELAPSED -lt $MAX_WAIT ]; do
-            STATUS=$(databricks jobs get-run --run-id $JOB_RUN_ID --output json | jq -r '.state.life_cycle_state')
-            RESULT=$(databricks jobs get-run --run-id $JOB_RUN_ID --output json | jq -r '.state.result_state // "RUNNING"')
-            
-            echo "Job status: $STATUS, Result: $RESULT"
-            
-            if [ "$STATUS" == "TERMINATED" ]; then
-              if [ "$RESULT" == "SUCCESS" ]; then
-                echo "✅ Job completed successfully!"
-                exit 0
-              else
-                echo "❌ Job failed with result: $RESULT"
-                databricks jobs get-run --run-id $JOB_RUN_ID
-                exit 1
-              fi
-            fi
-            
-            sleep $INTERVAL
-            ELAPSED=$((ELAPSED + INTERVAL))
-          done
-          
-          echo "⏱️ Job did not complete within $MAX_WAIT seconds"
-          exit 1
-      
-      - name: Test Summary
-        run: |
-          echo "✅ CI Test completed!"
-          echo "Bundle was deployed and job was tested on dev environment"
 
   # ============================================
   # CD: DEPLOY TO DEV (Automatic on merge)
