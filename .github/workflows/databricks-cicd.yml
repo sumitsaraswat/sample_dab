@@ -46,10 +46,13 @@ jobs:
           databricks --version
       
       - name: Validate Bundle Configuration
-        run: databricks bundle validate --target dev
-        env:
-          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
-          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        run: |
+          # Set environment variables explicitly
+          export DATABRICKS_HOST="${{ secrets.DATABRICKS_HOST }}"
+          export DATABRICKS_TOKEN="${{ secrets.DATABRICKS_TOKEN }}"
+          
+          # Validate the bundle
+          databricks bundle validate --target dev
       
       - name: Check Project Structure
         run: |
@@ -83,16 +86,22 @@ jobs:
           curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
       
       - name: Deploy to Dev
-        run: databricks bundle deploy --target dev
-        env:
-          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
-          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        run: |
+          # Set environment variables explicitly
+          export DATABRICKS_HOST="${{ secrets.DATABRICKS_HOST }}"
+          export DATABRICKS_TOKEN="${{ secrets.DATABRICKS_TOKEN }}"
+          
+          # Deploy the bundle
+          databricks bundle deploy --target dev
       
       - name: Get Deployment Summary
-        run: databricks bundle summary --target dev
-        env:
-          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
-          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        run: |
+          # Set environment variables explicitly
+          export DATABRICKS_HOST="${{ secrets.DATABRICKS_HOST }}"
+          export DATABRICKS_TOKEN="${{ secrets.DATABRICKS_TOKEN }}"
+          
+          # Get deployment summary
+          databricks bundle summary --target dev
       
       - name: Deployment Success
         run: |
@@ -119,16 +128,22 @@ jobs:
           curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
       
       - name: Deploy to West US Production
-        run: databricks bundle deploy --target westus_prod
-        env:
-          DATABRICKS_HOST: ${{ secrets.WESTUS_HOST }}
-          DATABRICKS_TOKEN: ${{ secrets.WESTUS_TOKEN }}
+        run: |
+          # Set environment variables explicitly
+          export DATABRICKS_HOST="${{ secrets.WESTUS_HOST }}"
+          export DATABRICKS_TOKEN="${{ secrets.WESTUS_TOKEN }}"
+          
+          # Deploy the bundle
+          databricks bundle deploy --target westus_prod
       
       - name: Verify West US Deployment
-        run: databricks bundle summary --target westus_prod
-        env:
-          DATABRICKS_HOST: ${{ secrets.WESTUS_HOST }}
-          DATABRICKS_TOKEN: ${{ secrets.WESTUS_TOKEN }}
+        run: |
+          # Set environment variables explicitly
+          export DATABRICKS_HOST="${{ secrets.WESTUS_HOST }}"
+          export DATABRICKS_TOKEN="${{ secrets.WESTUS_TOKEN }}"
+          
+          # Get deployment summary
+          databricks bundle summary --target westus_prod
       
       - name: Create Release Tag
         run: |
