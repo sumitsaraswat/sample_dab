@@ -45,14 +45,18 @@ jobs:
           curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
           databricks --version
       
-      - name: Validate Bundle Configuration
+      - name: Configure Databricks CLI
         run: |
-          # Set environment variables explicitly
-          export DATABRICKS_HOST="${{ secrets.DATABRICKS_HOST }}"
-          export DATABRICKS_TOKEN="${{ secrets.DATABRICKS_TOKEN }}"
-          
-          # Validate the bundle
-          databricks bundle validate --target dev
+          mkdir -p ~/.databricks
+          cat > ~/.databrickscfg << EOF
+          [DEFAULT]
+          host = ${{ secrets.DATABRICKS_HOST }}
+          token = ${{ secrets.DATABRICKS_TOKEN }}
+          EOF
+          chmod 600 ~/.databrickscfg
+      
+      - name: Validate Bundle Configuration
+        run: databricks bundle validate --target dev
       
       - name: Check Project Structure
         run: |
@@ -85,23 +89,21 @@ jobs:
         run: |
           curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
       
-      - name: Deploy to Dev
+      - name: Configure Databricks CLI
         run: |
-          # Set environment variables explicitly
-          export DATABRICKS_HOST="${{ secrets.DATABRICKS_HOST }}"
-          export DATABRICKS_TOKEN="${{ secrets.DATABRICKS_TOKEN }}"
-          
-          # Deploy the bundle
-          databricks bundle deploy --target dev
+          mkdir -p ~/.databricks
+          cat > ~/.databrickscfg << EOF
+          [DEFAULT]
+          host = ${{ secrets.DATABRICKS_HOST }}
+          token = ${{ secrets.DATABRICKS_TOKEN }}
+          EOF
+          chmod 600 ~/.databrickscfg
+      
+      - name: Deploy to Dev
+        run: databricks bundle deploy --target dev
       
       - name: Get Deployment Summary
-        run: |
-          # Set environment variables explicitly
-          export DATABRICKS_HOST="${{ secrets.DATABRICKS_HOST }}"
-          export DATABRICKS_TOKEN="${{ secrets.DATABRICKS_TOKEN }}"
-          
-          # Get deployment summary
-          databricks bundle summary --target dev
+        run: databricks bundle summary --target dev
       
       - name: Deployment Success
         run: |
@@ -127,23 +129,21 @@ jobs:
         run: |
           curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
       
-      - name: Deploy to West US Production
+      - name: Configure Databricks CLI
         run: |
-          # Set environment variables explicitly
-          export DATABRICKS_HOST="${{ secrets.WESTUS_HOST }}"
-          export DATABRICKS_TOKEN="${{ secrets.WESTUS_TOKEN }}"
-          
-          # Deploy the bundle
-          databricks bundle deploy --target westus_prod
+          mkdir -p ~/.databricks
+          cat > ~/.databrickscfg << EOF
+          [DEFAULT]
+          host = ${{ secrets.WESTUS_HOST }}
+          token = ${{ secrets.WESTUS_TOKEN }}
+          EOF
+          chmod 600 ~/.databrickscfg
+      
+      - name: Deploy to West US Production
+        run: databricks bundle deploy --target westus_prod
       
       - name: Verify West US Deployment
-        run: |
-          # Set environment variables explicitly
-          export DATABRICKS_HOST="${{ secrets.WESTUS_HOST }}"
-          export DATABRICKS_TOKEN="${{ secrets.WESTUS_TOKEN }}"
-          
-          # Get deployment summary
-          databricks bundle summary --target westus_prod
+        run: databricks bundle summary --target westus_prod
       
       - name: Create Release Tag
         run: |
