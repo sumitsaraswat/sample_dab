@@ -21,7 +21,6 @@ targets:
     mode: production
     workspace:
       host: https://westus.azuredatabricks.net
-      profile: westus
       root_path: /Workspace/Users/sumit.saraswat@databricks.com/.bundle/${bundle.name}/${bundle.target}
     permissions:
       - user_name: sumit.saraswat@databricks.com
